@@ -1,0 +1,314 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String?
+  walletAddress   String?  @unique
+  avatar          String?
+  bio             String?
+  role            UserRole @default(PARTICIPANT)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  organizations   Organization[]
+  hackathons      Hackathon[]
+  registrations   Registration[]
+  projects        Project[]
+  teamMemberships TeamMember[]
+  comments        Comment[]
+  rewards         Reward[]
+  nfts            NFT[]
+  
+  @@map("users")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  logo        String?
+  website     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  hackathons  Hackathon[]
+  
+  @@map("organizations")
+}
+
+model Hackathon {
+  id              String            @id @default(cuid())
+  title           String
+  description     String
+  rules           String?
+  prizes          String?
+  timeline        String?
+  imageUrl        String?
+  status          HackathonStatus   @default(DRAFT)
+  maxParticipants Int?
+  startDate       DateTime
+  endDate         DateTime
+  registrationDeadline DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  organizerId     String
+  organizer       Organization      @relation(fields: [organizerId], references: [id])
+  creatorId       String
+  creator         User              @relation(fields: [creatorId], references: [id])
+  categories      HackathonCategory[]
+  registrations   Registration[]
+  projects        Project[]
+  teams           Team[]
+  rewards         Reward[]
+  incubator       IncubatorProgram?
+  
+  @@map("hackathons")
+}
+
+model HackathonCategory {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  
+  // Relations
+  hackathonId String
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  
+  @@map("hackathon_categories")
+}
+
+model Registration {
+  id         String   @id @default(cuid())
+  status     RegistrationStatus @default(PENDING)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  hackathonId String
+  hackathon  Hackathon @relation(fields: [hackathonId], references: [id])
+  
+  @@unique([userId, hackathonId])
+  @@map("registrations")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  maxMembers  Int      @default(4)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hackathonId String
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id])
+  members     TeamMember[]
+  projects    Project[]
+  
+  @@map("teams")
+}
+
+model TeamMember {
+  id         String   @id @default(cuid())
+  role       TeamRole @default(MEMBER)
+  joinedAt   DateTime @default(now())
+
+  // Relations
+  userId     String
+  user       User  @relation(fields: [userId], references: [id])
+  teamId     String
+  team       Team  @relation(fields: [teamId], references: [id])
+  
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  imageUrl    String?
+  demoUrl     String?
+  githubUrl   String?
+  videoUrl    String?
+  status      ProjectStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hackathonId String
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id])
+  comments    Comment[]
+  rewards     Reward[]
+  incubator   IncubatorProject?
+  
+  @@map("projects")
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  
+  @@map("comments")
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  type        RewardType
+  amount      Int
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  hackathonId String
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id])
+  projectId  String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@map("rewards")
+}
+
+model NFT {
+  id           String   @id @default(cuid())
+  tokenId      String
+  contractAddress String
+  metadataUrl  String?
+  type         NFTType
+  createdAt    DateTime @default(now())
+
+  // Relations
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  
+  @@map("nfts")
+}
+
+model IncubatorProgram {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  duration    Int      // in days
+  funding     Float?
+  mentorship  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  hackathonId String   @unique
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id])
+  projects    IncubatorProject[]
+  
+  @@map("incubator_programs")
+}
+
+model IncubatorProject {
+  id          String   @id @default(cuid())
+  status      IncubatorStatus @default(APPLIED)
+  appliedAt   DateTime @default(now())
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  projectId   String   @unique
+  project     Project  @relation(fields: [projectId], references: [id])
+  programId   String
+  program     IncubatorProgram @relation(fields: [programId], references: [id])
+  
+  @@unique([projectId, programId])
+  @@map("incubator_projects")
+}
+
+// Enums
+enum UserRole {
+  PARTICIPANT
+  ORGANIZER
+  MENTOR
+  JUDGE
+  ADMIN
+}
+
+enum HackathonStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_OPEN
+  ONGOING
+  JUDGING
+  COMPLETED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum TeamRole {
+  LEADER
+  MEMBER
+}
+
+enum ProjectStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WINNER
+}
+
+enum RewardType {
+  TOKEN
+  NFT
+  CASH
+  MERCHANDISE
+}
+
+enum NFTType {
+  PARTICIPATION
+  ACHIEVEMENT
+  WINNER
+}
+
+enum IncubatorStatus {
+  APPLIED
+  ACCEPTED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED_OUT
+}
