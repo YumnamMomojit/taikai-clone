@@ -17,7 +17,7 @@ import {
   Wallet, 
   Github, 
   Twitter, 
-  Google, 
+  Chrome,
   ArrowRight,
   Shield,
   CheckCircle,
@@ -198,7 +198,7 @@ export default function AuthPage() {
                           onClick={() => handleSocialLogin("google")}
                           disabled={isLoading}
                         >
-                          <Google className="h-4 w-4" />
+                          <Chrome className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
